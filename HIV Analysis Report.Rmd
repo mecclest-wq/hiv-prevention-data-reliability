@@ -41,8 +41,8 @@ The project is organized into separate scripts for data preparation, statistical
 - prepare_source_data.R: processes the original UNAIDS and IHME files.
 -source_sensitivity.R: generates the source-comparison results.
 -analysis.R: produces the main analysis outputs. -ai_validation.R: independently checks the percentage-change calculation using synthetic test cases. 
--hiv.Rmd: presents the findings.
--app.R: launches the interactive dashboard.
+-hiv_analysis_report.Rmd: presents the findings.
+-hiv_analysis_dashboard.R: launches the interactive dashboard.
 
 The scripts should be run from the project root directory in the order shown below. Required packages and original source files must be available before running the workflow.
 
@@ -52,8 +52,8 @@ source("source_sensitivity.R")
 source("analysis.R")
 source("ai_validation.R")
 
-rmarkdown::render("hiv.Rmd")
-shiny::runApp("app.R")
+rmarkdown::render("hiv_analysis_report.Rmd")
+shiny::runApp("hiv_analysis_dashboard.R")
 ``` 
 
 
@@ -160,13 +160,13 @@ print(p_intervals)
 
 These findings suggest that the consistency of the two sources' estimates varies by country. In Uganda, the lower frequency of interval overlap indicates that the reported ranges were more often separated, suggesting greater disagreement between the sources' annual estimates relative to their reported uncertainty. South Africa showed more frequent overlap, although this does not necessarily mean that its estimates were more accurate.
 
-The width of the uncertainty intervals also varied across countries and sources, demonstrating that annual infection estimates are not equally precise. However, overlap should be interpreted descriptively rather than as a formal statistical test. Overlapping intervals do not establish agreement, and non-overlapping intervals do not identify which source is correct. Furthermore, the reported intervals describe uncertainty in individual annual estimates and cannot be directly interpreted as confidence intervals for the calculated percentage declines.
+The width of the uncertainty intervals also varied across countries and sources, demonstrating that annual infection estimates are not equally precise. However, interpret overlap descriptively rather than as a formal statistical test. Overlapping intervals do not establish agreement, and non-overlapping intervals do not identify which source is correct. Furthermore, the reported intervals describe uncertainty in individual annual estimates and cannot be directly interpreted as confidence intervals for the calculated percentage declines.
 
 ## Part C: Testing sensitivity of conclusions
 
-I assessed whether the interpretation of epidemic progress changed when using UNAIDS instead of IHME estimates. In R, I compared the observed peak years, the magnitude of the estimated decline from each source's peak, and the ranking of countries by percentage decline. I also checked whether the estimated change remained negative under different scenario.
+I assessed whether the interpretation of epidemic progress changed when using UNAIDS instead of IHME estimates. In R, I compared the observed peak years, the magnitude of the estimated decline from each source's peak, and the ranking of countries by percentage decline. I also checked whether the estimated change remained negative under different scenarios.
 
-Because each peak is defined as the highest estimated value in the 1990–2016 series, when results are more information sensitive, the more qualitative interpretation by users preserve differences in the magnitude of decline and country
+Because each peak is defined as the highest estimated value in the 1990–2016 series, when results are more information sensitive, the more qualitative interpretation by users preserves differences in the magnitude of decline and country
 rankings.
 
 
@@ -181,7 +181,7 @@ knitr::kable(ranking,
 print(p_sensitivity)
 ```
 
-To explore how sensitive the **direction** of change is to reported endpoint ranges, I also calculated an illustrative stress test: the smallest and largest percentage changes obtained by combining the reported bounds at the selected peak year and in 2016. The peak year is held fixed. These extremes are not joint probability intervals and **must not be presented as confidence or uncertainty intervals for the decline**. Without time-correlated model draws, the uncertainty of a peak year, change statistic, or regression slope cannot be estimated reliably from annual bounds alone.
+To explore how sensitive the **direction** of change is to reported endpoint ranges, I also calculated an illustrative stress test: the smallest and largest percentage changes obtained by combining the reported bounds at the selected peak year and in 2016. The peak year is held fixed. These extremes are not joint probability intervals and **must not be presented as confidence or uncertainty intervals for the decline**. Without time-correlated model draws, annual bounds alone cannot reliably estimate the uncertainty of a peak year, change statistic, or regression slope.
 
 ```{r source-stress-test}
 knitr::kable(endpoint_bounds |> select(country,source,stress_smallest_pct,
@@ -247,4 +247,4 @@ Future work could incorporate incidence rates per 100,000 people, maternal HIV p
 | OWID | Share of pregnant women with HIV that receive ART (percentage) | 2000–2024 | 2026-10-24 |
 
 Exact indicator URLs, access dates, units, and licenses are entered in `data/SOURCES.md`.
-- Run `analysis.R` to regenerate figures and tables. Run `ai_validation.R` to check synthetic cases. Run `app.R` to launch the dashboard.
+- Run `analysis.R` to regenerate figures and tables. Run `ai_validation.R` to check synthetic cases. Run `hiv_analysis_dashboard.R` to launch the dashboard.
