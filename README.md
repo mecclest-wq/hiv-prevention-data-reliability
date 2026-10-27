@@ -35,8 +35,8 @@ verify source analysis.
 Once maternal/pediatric inputs exist, run `source('analysis.R')` 
 for all analyses.
 4. Run `source('ai_validation.R')`.
-5. Knit `hiv.Rmd` to HTML or use `rmarkdown::render('hiv.Rmd')`.
-6. Run `shiny::runApp('app.R')`.
+5. Knit `hiv_analysis_report.Rmd` to HTML or use `rmarkdown::render('hiv_analysis_report.Rmd')`.
+6. Run `shiny::runApp('hiv_analysis_dashboard.R')`.
 
 ## Methodological choices
 - Countries: Kenya, South Africa, Uganda.
@@ -59,8 +59,8 @@ verification require independent review.
 regression models, and quality audit
 - `ai_validation.R`: synthetic edge-case tests and corrected 
 percentage-change function
-- `hiv.Rmd`: reproducible narrative report
-- `app.R`: Shiny dashboard
+- `hiv_analysis_report.Rmd`: reproducible narrative report
+- `hiv_analysis_dashboard.R`: Shiny dashboard
 - `data/SOURCES.md`: source provenance checklist
 - `outputs/` and `figures/`: generated files (not included until the data are run)
 
