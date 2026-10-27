@@ -52,8 +52,8 @@ source("source_sensitivity.R")
 source("analysis.R")
 source("ai_validation.R")
 
-rmarkdown::render("hiv_analysis_report.Rmd")
-shiny::runApp("hiv_analysis_dashboard.R")
+rmarkdown::render("hiv.Rmd")
+shiny::runApp("app.R")
 ``` 
 
 
@@ -247,4 +247,4 @@ Future work could incorporate incidence rates per 100,000 people, maternal HIV p
 | OWID | Share of pregnant women with HIV that receive ART (percentage) | 2000–2024 | 2026-10-24 |
 
 Exact indicator URLs, access dates, units, and licenses are entered in `data/SOURCES.md`.
-- Run `analysis.R` to regenerate figures and tables. Run `ai_validation.R` to check synthetic cases. Run `hiv_analysis_dashboard.R` to launch the dashboard.
+- Run `analysis.R` to regenerate figures and tables. Run `ai_validation.R` to check synthetic cases. Run `app.R` to launch the dashboard.
