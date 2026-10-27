@@ -1,0 +1,250 @@
+---
+title: "HIV Prevention Outcomes and Data Reliability"
+author: "Independent R research portfolio project"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '2'
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+source('analysis.R')
+```
+
+# Project overview
+
+I wanted to use public HIV estimates to go beyond comparing the number of new infections across countries. Our World in Data (OWID) already has useful charts for those trends. For this project, I focused on three questions that require additional calculations or combining indicators: 
+1. How did countries' infection estimates change after their observed peaks?
+2. Is maternal ART coverage is associated with pediatric HIV outcomes in later years?
+3. Do conclusions about epidemic progress differ when choosing UNAIDS or Institute for Health Metrics and Evaluation (IHME) estimates collected from 1990-2016 and their reported uncertainty?
+
+I used Kenya, South Africa, and Uganda as case studies. These are estimated population-level indicators. My analyses describe patterns and associations; they do not establish causality.
+
+I also developed an interactive Shiny dashboard to make the results easier to explore. Users can select between the countries, compare maternal ART coverage with pediatric HIV outcomes at different time lags, and examine how UNAIDS and IHME estimates differ across years. The purpose of the dashboard is not to identify which organization provides the correct estimate, but to demonstrate how data selection and uncertainty can affect the interpretation of epidemic progress.
+
+# Data and Methods
+
+I downloaded the underlying indicators from OWID and checked the original source, units, age group, year coverage, and country labels. Each input file has one row per country and year. Missing observations are retained where needed for a data-quality audit, rather than silently filled.
+
+I used separate files for UNAIDS incidence, IHME incidence, maternal ART coverage, and pediatric infections. Before comparing UNAIDS and IHME, I checked that both incidence files refer to the same age group and annual count measure. The maternal ART variable is a percentage, while pediatric infections are annual counts. These are different units and should not be interpreted as directly comparable quantities.
+
+##Reproducibility workflow
+
+The project is organized into separate scripts for data preparation, statistical analysis, AI-assisted code validation, and interactive visualization. 
+- prepare_source_data.R: processes the original UNAIDS and IHME files.
+-source_sensitivity.R: generates the source-comparison results.
+-analysis.R: produces the main analysis outputs. -ai_validation.R: independently checks the percentage-change calculation using synthetic test cases. 
+-hiv.Rmd: presents the findings.
+-app.R: launches the interactive dashboard.
+
+The scripts should be run from the project root directory in the order shown below. Required packages and original source files must be available before running the workflow.
+
+```{r reproducibility-workflow, eval=FALSE, echo=TRUE}
+source("prepare_source_data.R")
+source("source_sensitivity.R")
+source("analysis.R")
+source("ai_validation.R")
+
+rmarkdown::render("hiv.Rmd")
+shiny::runApp("app.R")
+``` 
+
+
+```{r data-quality}
+knitr::kable(quality_overview, caption = 'Rows available and excluded by analysis')
+```
+
+# Analysis 1: Post-peak trajectories
+
+**Question:** After each country's highest observed annual infection estimate, how did following estimates change relative to that peak?
+
+I identified each country's peak from the available UNAIDS series. By assigning each country's observed peak a value of 100% and measuring subsequent years relative to that peak, I could compare how quickly estimated infections declined after the highest recorded level in each country. This approach accounts for differences in peak timing and removes differences in the absolute scale of infection counts. It therefore helps identify whether countries experienced rapid, gradual, or prolonged post-peak declines. It does not adjust for population size, and the observed peak can change when the dataset is updated.
+
+```{r peak-figure, fig.width=8, fig.height=5}
+print(p_peak)
+```
+
+```{r peak-table}
+knitr::kable(post_peak_summary, digits = 1,
+             caption = 'Observed peaks and number of post-peak observations')
+```
+
+**Interpretation:** All three countries experienced substantial declines in estimated annual new HIV infections following their observed peaks, although the timing and pace of these declines differed. Kenya reached its observed peak in 1992 and experienced a relatively rapid reduction in infections afterward, reaching a much smaller percentage of its peak by 2025. South Africa peaked later, in 1999, and showed a more gradual decline. Uganda's highest estimate occurred in 1990, and its trajectory remained relatively close to its peak for several years before showing a more pronounced decline.
+
+These findings demonstrate why aligning countries by the number of years since their observed peak can provide a different perspective from comparing infection counts in the same calendar year. However, the analysis describes changes in estimated infection burden rather than population-adjusted infection risk. The results also do not establish the outside context that caused the observed declines.
+
+# Analysis 2: Maternal ART and pediatric HIV
+
+**Question:** Is higher ART coverage among pregnant women living with HIV associated with fewer estimated pediatric HIV infections in the same or later years?
+
+I matched maternal ART coverage in year *t* to pediatric HIV infections in year *t + L*, where *L* is a lag of zero to three years. The two-year lag is the main example, and the other lags are sensitivity checks. I chose this range to explore whether results depend on timing; it is not a validated biological delay, and the data cannot identify when individual transmissions occurred.
+
+I compared a simple regression with a model that also includes country indicators and a linear outcome-year trend, when enough complete observations were available. I used `log1p()` on pediatric infection counts so the outcome could include zeros. The models describe associations, not causal effects. They also cannot fully account for outside variables, such as changes in testing, birth rates, access to care, or other interventions.
+
+```{r maternal-quality}
+knitr::kable(lag_quality, caption = 'Country-year availability and exclusions by lag')
+```
+
+```{r maternal-figure, fig.width=8, fig.height=5}
+print(p_art)
+```
+
+```{r maternal-models}
+if (nrow(model_results) > 0) {
+  knitr::kable(model_results, digits = 4,
+               caption = 'Unadjusted and adjusted regression coefficients')
+} else {
+  cat('The available complete data did not meet the prespecified conditions for regression.')
+}
+```
+
+**Interpretation:** The results suggest an inverse association between maternal ART coverage and estimated pediatric HIV infections. In the two-year-lag analysis, countries generally had fewer pediatric infections in years following higher maternal ART coverage. However, the scatterplot also shows differences between countries, notably in the number of pediatric infections observed at similar levels of ART coverage.
+
+The country-and-year-adjusted regression estimated a negative association between maternal ART coverage and subsequent pediatric HIV infection counts. However, because both indicators exhibit substantial changes over time, this association may reflect shared historical trends and other factors rather than an independent relationship between maternal ART coverage and pediatric outcomes. The conventional regression p-value should be interpreted cautiously because the observations are repeated annual estimates within only three countries.
+
+# Analysis 3: Source sensitivity and estimation uncertainty (1990–2016)
+
+**Research question:** Do UNAIDS and IHME estimates lead to consistent conclusions about HIV epidemic progress in Kenya, South Africa, and Uganda from 1990–2016, and how does estimation uncertainty affect our confidence in those conclusions?
+
+I compared the same all-age, both-sex **annual counts** of new HIV infections from the UNAIDS 2026 estimates workbook and IHME exports. I restricted both sources to 1990–2016, the common period covered by both datasets. I combined the three IHME country CSVs in R, and retained the estimate, lower bound, and upper bound from each source. The analysis requires matching country and calendar year; it does not attribute missing estimates Due to the two organizations using different estimation methods, differences do not establish which source is correct.
+
+## Data quality and exclusions
+
+I first checked the expected 27 country-years per country and counted complete pairs of point estimates and uncertainty bounds. The table below makes missingness explicit instead of silently dropping unmatched observations.
+
+```{r source-quality}
+knitr::kable(quality, caption='Matched years and completeness of source estimates, 1990–2016')
+knitr::kable(exclusions, caption='Reasons country-years were excluded from paired comparisons')
+```
+
+## Part A: Comparing epidemic progress
+
+For each source and country, I identified the year with the largest estimated number of new infections **within 1990–2016**. I then calculated the percentage change from that source-specific peak to 2016 and the average annual change in estimated infection counts over the same interval. The average annual change is an endpoint-based descriptive measure. When two years have equal peak estimates, the earlier year is selected. If a peak occurs in 2016, post-peak change is undefined rather than reported as zero.
+
+```{r source-progress}
+knitr::kable(progress, digits=2,
+             caption='Source-specific observed peaks and changes through 2016')
+```
+
+```{r source-trajectories, fig.width=10, fig.height=5.5}
+print(p_trajectories)
+```
+
+**Interpretation** Measured from each source’s own observed peak, both UNAIDS and IHME estimate declines in annual new HIV infections through 2016 for Kenya, South Africa, and Uganda. Because the peak is by definition the highest value in each series, a negative peak-to-2016 change is expected unless the peak falls in 2016, so this result is partly built into the metric. The more informative question is how large the estimated change is, and that depends on the source.
+
+For Kenya, UNAIDS estimated an 82.0% decline from its 1992 peak to 2016, while IHME estimated a 61.0% decline from its 1993 peak. South Africa was the only country where IHME estimated a larger decline than UNAIDS, with reductions of 65.6% and 56.6%, respectively. Uganda also showed substantial disagreement, with IHME estimating a 61.3% decline compared with 37.3% from UNAIDS.
+
+The sources reported the same peak year for South Africa (1999) and Uganda (1990) and differed by one year for Kenya (1992 vs 1993). Agreement for Uganda should be read cautiously: 1990 is the first year in the series for both sources, so the peak is a boundary value and an earlier peak cannot be ruled out. The curves also differ in shape. IHME estimates a sharp fall to a 1998 trough followed by a rise through 2010, while UNAIDS estimates a long plateau. Because the calculations use source-specific peaks, differences in the percentage change reflect both the estimated peak values and the 2016 values.
+
+## Part B: Evaluating estimation uncertainty
+
+I compared the reported lower and upper bounds for each matched year and calculated how often the two reported intervals overlap. I also recorded whether either source’s point estimate falls inside the other source’s interval, and calculated each interval’s width relative to its point estimate. These summaries describe the uncertainty reported for **individual annual estimates**. Interval overlap is not a inference test, and the two sources may use different uncertainty methods or coverage conventions.
+
+```{r source-uncertainty}
+knitr::kable(uncertainty, digits=1,
+             caption='Descriptive uncertainty comparisons across matched years')
+```
+
+```{r source-intervals, fig.width=10, fig.height=7}
+print(p_intervals)
+```
+
+**Interpretation** Comparing the reported uncertainty intervals revealed differences in the level of agreement between UNAIDS and IHME across the three countries. South Africa had the highest proportion of overlapping annual intervals, with overlap in 23 of 27 years (85.2%). Kenya had overlapping intervals in 19 years (70.4%), while Uganda had the lowest overlap, with 15 years (55.6%).
+
+These findings suggest that the consistency of the two sources' estimates varies by country. In Uganda, the lower frequency of interval overlap indicates that the reported ranges were more often separated, suggesting greater disagreement between the sources' annual estimates relative to their reported uncertainty. South Africa showed more frequent overlap, although this does not necessarily mean that its estimates were more accurate.
+
+The width of the uncertainty intervals also varied across countries and sources, demonstrating that annual infection estimates are not equally precise. However, overlap should be interpreted descriptively rather than as a formal statistical test. Overlapping intervals do not establish agreement, and non-overlapping intervals do not identify which source is correct. Furthermore, the reported intervals describe uncertainty in individual annual estimates and cannot be directly interpreted as confidence intervals for the calculated percentage declines.
+
+## Part C: Testing sensitivity of conclusions
+
+I assessed whether the interpretation of epidemic progress changed when using UNAIDS instead of IHME estimates. In R, I compared the observed peak years, the magnitude of the estimated decline from each source's peak, and the ranking of countries by percentage decline. I also checked whether the estimated change remained negative under different scenario.
+
+Because each peak is defined as the highest estimated value in the 1990–2016 series, when results are more information sensitive, the more qualitative interpretation by users preserve differences in the magnitude of decline and country
+rankings.
+
+
+```{r source-conclusions}
+knitr::kable(comparison, digits=2,
+             caption='Differences in conclusions between UNAIDS and IHME')
+knitr::kable(ranking,
+             caption='Country rankings by source-specific peak-to-2016 change')
+```
+
+```{r source-sensitivity, fig.width=9, fig.height=4.5}
+print(p_sensitivity)
+```
+
+To explore how sensitive the **direction** of change is to reported endpoint ranges, I also calculated an illustrative stress test: the smallest and largest percentage changes obtained by combining the reported bounds at the selected peak year and in 2016. The peak year is held fixed. These extremes are not joint probability intervals and **must not be presented as confidence or uncertainty intervals for the decline**. Without time-correlated model draws, the uncertainty of a peak year, change statistic, or regression slope cannot be estimated reliably from annual bounds alone.
+
+```{r source-stress-test}
+knitr::kable(endpoint_bounds |> select(country,source,stress_smallest_pct,
+                                      stress_largest_pct,stress_sign_stable),
+             digits=1, caption='Illustrative endpoint-bound sensitivity (not a confidence interval)')
+```
+
+**Interpretation** Conclusions about HIV epidemic progress depend partly on the data source. Using IHME estimates, South Africa had the largest percentage decline from its observed peak to 2016, followed by Uganda and Kenya. Using UNAIDS estimates, Kenya had the largest decline, followed by South Africa and Uganda, so the ranking of all three countries changed with the source.
+
+The peak-based comparison always shows a decline, so it cannot test whether the sources agree on direction. Fixed-calendar-year comparisons can be positive or negative and are more informative. In these point estimates, the two sources agree in direction for South Africa in every window, but not for Kenya or Uganda. For example, from 2010 to 2016 UNAIDS estimates a decline of about [−42]% for Kenya while IHME estimates a change of about [+4]%, and from 2000 to 2016 UNAIDS estimates about [−31]% for Uganda while IHME estimates about [+43]%. These values are point estimates without uncertainty intervals, and some differences may fall within the sources’ reported uncertainty. The IHME export may also come from an older estimation round than the 2026 UNAIDS release, so some of this difference may reflect estimation vintage rather than the sources themselves. 
+
+# Data Analysis Conclusion
+UNAIDS and IHME estimates lead to consistent conclusions about the overall direction of HIV epidemic progress in Kenya, South Africa, and Uganda between their observed peaks and 2016, but they do not consistently agree on the magnitude of progress or the relative performance of the three countries. Differences in annual estimates, uncertainty interval overlap, and country rankings demonstrate that data source selection influences how epidemic progress is interpreted. While the endpoint-bound sensitivity analysis supports the direction of decline under the scenarios examined, the available uncertainty intervals are insufficient to quantify confidence in the calculated declines formally. These results highlight the importance of evaluating multiple sources and explicitly reporting uncertainty when interpreting modeled public health estimates.
+
+# AI-assisted code validation
+
+## AI-Assisted Code Validation
+
+To evaluate the reliability of AI-generated R code, I used ChatGPT to develop a workflow for calculating percentage changes in estimated annual new HIV infections between 1990 and 2024. I then examined how the code handled missing baseline values, zero baselines, and synthetic duplicate country-year observations.
+
+The original code contained a reshaping issue. Although it aggregated duplicate country-year observations using `group_by()` and `summarise()`, it retained an additional variable, `n_observations`, when reshaping the data. This could cause `pivot_wider()` to return multiple rows for one country instead of one complete record.
+
+After reporting the issue to ChatGPT, I received a revised implementation that removed the additional variable before reshaping. I evaluated the original and corrected approaches using five synthetic test cases, including a case where the expected percentage change was -15% after averaging two comparable 2024 estimates.
+
+I also added a check to ensure both endpoint columns exist when a year is entirely absent. This additional safeguard was not part of the original AI response.
+
+The synthetic tests assess whether the code behaves as intended under specified conditions. They do not evaluate the accuracy of UNAIDS, IHME, or OWID estimates, and the synthetic duplicates do not represent duplicates found in the actual HIV dataset.
+```{r ai-validation-results, echo=FALSE, message=FALSE}
+source("ai_validation.R")
+
+knitr::kable(
+  checks,
+  digits = 2,
+  caption = "Synthetic validation cases for the corrected AI-assisted code"
+)
+```
+
+
+
+# Limitations and next steps
+
+**Limitations and next steps**
+
+Several limitations should be considered when interpreting these findings. First, the analyses rely on modeled population-level HIV estimates rather than individual patient records or directly observed infection counts. Differences between UNAIDS and IHME may reflect differences in estimation methods, input data, assumptions, and uncertainty calculations. So, this project cannot determine which source provides the more accurate estimate.
+
+Second, the post-peak analysis uses estimated infection counts rather than population-adjusted incidence rates. Changes in population size may therefore influence the observed trends. In addition, observed peak years are limited by the available data. Uganda's peak occurred in 1990, the first year included in the dataset, so an earlier peak cannot be ruled out.
+
+Third, the maternal ART analysis is observational and uses country-level annual estimates. The relationship between maternal ART coverage and pediatric infections may be influenced by changes in maternal HIV prevalence, healthcare access, testing, population size, and other prevention programs. The use of pediatric infections among children ages 0–14 also not only isolated to mother-to-child transmission. Although the adjusted regression accounts for country differences and a linear calendar-year trend, it does not fully address confounding, differences in country-specific trends, or dependence between repeated observations.
+
+Finally, the uncertainty sensitivity analysis uses reported annual bounds rather than joint uncertainty draws. The endpoint scenarios are illustrative and cannot quantify the probability that a decline occurred or provide formal confidence intervals for changes from the observed peak.
+
+Future work could incorporate incidence rates per 100,000 people, maternal HIV prevalence, prevention-of-mother-to-child-transmission indicators, and additional countries. Access to joint uncertainty draws would also allow a more rigorous assessment of uncertainty in peak years and percentage declines. Further analyses could examine whether associations differ across countries or change under alternative modeling assumptions.
+
+# Data sources and reproducibility
+
+- Our World in Data HIV/AIDS topic page: <https://ourworldindata.org/hiv-aids>
+- Underlying source estimates: UNAIDS and IHME; 
+| Dataset | Indicator and units | Years used | Accessed |
+|---|---|---|---|
+| UNAIDS | New HIV infections, all ages, both sexes (count) | 1990–2025 | 2026-10-24 |
+| IHME | HIV/AIDS incidence, all ages, both sexes (number) | 1990–2016 | 2026-10-24 |
+| OWID | Children newly infected with HIV (infections) | 1990–2024 | 2026-10-24 |
+| OWID | Share of pregnant women with HIV that receive ART (percentage) | 2000–2024 | 2026-10-24 |
+
+Exact indicator URLs, access dates, units, and licenses are entered in `data/SOURCES.md`.
+- Run `analysis.R` to regenerate figures and tables. Run `ai_validation.R` to check synthetic cases. Run `app.R` to launch the dashboard.

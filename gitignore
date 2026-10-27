@@ -1,0 +1,26 @@
+.Rhistory
+.RData
+.Rproj.user/
+*.html
+*.pdf
+# Third-party datasets
+data/*.csv
+data/*.xlsx
+data/*.xls
+
+# Generated tables that may reproduce source data
+outputs/*.csv
+
+# R session files
+.Rhistory
+.RData
+.Rproj.user/
+
+# Temporary report files
+*.aux
+*.log
+*.tex
+*.knit.md
+
+# System files
+.DS_Store
