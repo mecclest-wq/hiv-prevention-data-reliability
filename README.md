@@ -59,8 +59,8 @@ verification require independent review.
 regression models, and quality audit
 - `ai_validation.R`: synthetic edge-case tests and corrected 
 percentage-change function
-- `hiv_analysis_report.Rmd`: reproducible narrative report
-- `hiv_analysis_dashboard.R`: Shiny dashboard
+- `hiv.Rmd`: reproducible narrative report
+- `app.R`: Shiny dashboard
 - `data/SOURCES.md`: source provenance checklist
 - `outputs/` and `figures/`: generated files (not included until the data are run)
 
