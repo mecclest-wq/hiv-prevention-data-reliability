@@ -68,6 +68,4 @@ percentage-change function
 This is an epidemiological data analysis.
 
 ## Source sensitivity scope
-The 1990–2016 source analysis uses annual **counts**, not incidence rates; 
-interval overlap and endpoint-bound stress tests are descriptive, not 
-formal inference. `source_sensitivity.R` can run without maternal ART files.
+The 1990–2016 source-sensitivity analysis compares UNAIDS and IHME estimates of annual HIV incidence, expressed as the estimated number of new HIV infections (incidence counts) rather than population-standardized incidence rates. Interval overlap and endpoint-bound sensitivity analyses are descriptive and should not be interpreted as formal statistical inference. The source_sensitivity.R script can run independently of the maternal ART datasets.
